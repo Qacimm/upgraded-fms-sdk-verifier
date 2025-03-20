@@ -8,4 +8,4 @@ Main Java service uses the upgraded FMS sdk to invovke all feature toggles in th
 
 if you run `test.sh`, it will first fetch the feature toggles using sdk and then by hitting FMS, in the end it will take the diff of both and you can compare the results (final.diff).
 
-Note: test.sh only compares the `isActive` feature toggles, you can verify the values of `isActiveForContextId` manually.
+Note: test.sh only compares the `isActive` feature toggles, we have to verify the values of `isActiveForContextId` manually, there are not too many of them. I have personally tested them and all are returning correct values
