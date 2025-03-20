@@ -11,7 +11,7 @@ echo "Running fms script..."
 
 # Step 3: Generate diff between the two files
 echo "Generating diff between sdk_active_vars.txt and bakend_active_vars.txt..."
-diff sdk_active_vars.txt bakend_active_vars.txt > active_vars.diff
+diff sdk_active_vars.txt backend_active_vars.txt > active_vars.diff
 
 echo "Generating diff between sdk_active_context_vars.txt and backend_active_context_vars.txt..."
 diff sdk_context_vars.txt backend_context_vars.txt > context_vars.diff
