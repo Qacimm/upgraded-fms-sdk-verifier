@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# Check that two files containing variable names were provided
+if [[ -z "$1" || -z "$2" ]]; then
+    echo ""
+    echo "Usage: $0 <first-file> <second-file> [dev|prod]"
+    echo ""
+    exit 1
+fi
+
+FIRST_FILE="$1"
+SECOND_FILE="$2"
+
+# Validate both files exist
+if [[ ! -f "$FIRST_FILE" ]]; then
+    echo ""
+    echo "Error: File '$FIRST_FILE' does not exist."
+    echo ""
+    exit 1
+fi
+
+if [[ ! -f "$SECOND_FILE" ]]; then
+    echo ""
+    echo "Error: File '$SECOND_FILE' does not exist."
+    echo ""
+    exit 1
+fi
+
+
+
+ENV="${3:-dev}"  # Default to dev if not specified
+FIRST_OUTPUT_FILE="backend_active_vars.txt"
+SECOND_OUTPUT_FILE="backend_context_vars.txt"
+BATCH_SIZE=100
+
+# Define variables for headers
+ACCEPT="application/json, text/plain, */*"
+USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+
+# Function to log only to file
+log() {
+    echo "$1" >> "$OUTPUT_FILE"
+}
+
+# Function to log JSON in pretty format
+log_json() {
+    local json="$1"
+    local vars=("${@:2}")
+    
+    for var in "${vars[@]}"; do
+        valueOnly=$(echo "$json" | /opt/homebrew/bin/jq ".[\"$var\"]" 2>/dev/null)
+        if [[ "$valueOnly" != "null" ]]; then
+            state=$(echo "$valueOnly" | /opt/homebrew/bin/jq -r '.state // "No state field found"' 2>/dev/null)
+            if [[ "$state" == "1" ]]; then
+            log "$var: ENABLED"
+            else
+            log "$var: DISABLED"
+            fi
+        fi
+    done
+}
+
+# Function to log JSON for context variables
+log_json_context() {
+    local json="$1"
+    local vars=("${@:2}")
+    
+    for var in "${vars[@]}"; do
+        valueOnly=$(echo "$json" | /opt/homebrew/bin/jq ".[\"$var\"]" 2>/dev/null)
+        if [[ "$valueOnly" != "null" ]]; then
+            state=$(echo "$valueOnly" | /opt/homebrew/bin/jq -r '.state // "No state field found"' 2>/dev/null)
+            if [[ "$state" == "0" ]]; then
+                log "$var: DISABLED"
+            else
+                # State is 1, check strategy params
+                strategy_params=$(echo "$valueOnly" | /opt/homebrew/bin/jq -r '.strategyParams // ""' 2>/dev/null)
+                if [[ "$strategy_params" == "$ENV" ]]; then
+                    log "$var: ENABLED"
+                else
+                    log "$var: DISABLED"
+                fi
+            fi
+        fi
+    done
+}
+
+# Function to process a file
+process_file() {
+    local FILE="$1"
+    local OUTPUT_FILE="$2"
+    local TYPE="$3"  # "normal" or "context"
+    
+    # Clear output file if it exists
+    > "$OUTPUT_FILE"
+    
+    # Load variables from file
+    all_vars=()
+    while IFS= read -r line; do
+        # Skip empty lines
+        if [[ -n $(echo "$line" | /usr/bin/tr -d '[:space:]') ]]; then
+            all_vars+=("$(echo "$line" | /usr/bin/xargs)")
+        fi
+    done < "$FILE"
+    total_vars=${#all_vars[@]}
+    
+    echo "Processing file: $FILE (${total_vars} variables)"
+    
+    # Process in batches
+    for ((i=0; i<total_vars; i+=BATCH_SIZE)); do
+        # Get current batch (up to BATCH_SIZE variables)
+        end=$((i + BATCH_SIZE))
+        if [[ $end -gt $total_vars ]]; then
+            end=$total_vars
+        fi
+        
+        # Extract the batch and join with commas
+        batch=()
+        for ((j=i; j<end; j++)); do
+            batch+=("${all_vars[j]}")
+        done
+        
+        joined_vars=$(IFS=,; echo "${batch[*]}")
+        
+        echo -n "Processing batch $((i/BATCH_SIZE + 1))... "
+        
+        rolloutInfo=$(/usr/bin/curl -s -X GET "http://feature-management-service.careem-engineering.com/v1/feature?feature=$joined_vars" \
+                -H "Accept: $ACCEPT" \
+                -H "User-Agent: $USER_AGENT" \
+                --compressed)
+        
+        # Use appropriate logging function based on file type
+        if [[ "$TYPE" == "normal" ]]; then
+            log_json "$rolloutInfo" "${batch[@]}"
+        else
+            log_json_context "$rolloutInfo" "${batch[@]}"
+        fi
+        
+        echo "done"
+    done
+    
+    echo "Results saved to $OUTPUT_FILE"
+}
+
+# Process the first file with normal logging
+OUTPUT_FILE="$FIRST_OUTPUT_FILE"
+process_file "$FIRST_FILE" "$FIRST_OUTPUT_FILE" "normal"
+
+# Process the second file with context logging
+OUTPUT_FILE="$SECOND_OUTPUT_FILE"
+process_file "$SECOND_FILE" "$SECOND_OUTPUT_FILE" "context"
