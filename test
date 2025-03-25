@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Step 1: Build and run the Java service
+echo "Building and running Java service..."
+mvn clean package
+java -cp target/test-service-1.0-SNAPSHOT.jar org.example.Main
+
+# Step 2: Run the fms script
+echo "Running fms script..."
+./fms active_vars.txt context_vars.txt 100
+
+# Step 3: Generate diff between the two files
+echo "Generating diff between sdk_active_vars.txt and bakend_active_vars.txt..."
+diff sdk_active_vars.txt bakend_active_vars.txt > active_vars.diff
+
+echo "Generating diff between sdk_active_context_vars.txt and backend_active_context_vars.txt..."
+diff sdk_context_vars.txt backend_context_vars.txt > context_vars.diff

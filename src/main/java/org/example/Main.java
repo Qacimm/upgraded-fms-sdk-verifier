@@ -24,9 +24,9 @@ public class Main {
             
             // Path for input and output files
             String varsFilePath = Paths.get("active_vars.txt").toAbsolutePath().toString();
-            String contextVarsFilePath = Paths.get("active_context_vars.txt").toAbsolutePath().toString();
-            String varsOutputFilePath = Paths.get("feature_status.txt").toAbsolutePath().toString();
-            String contextOutputFilePath = Paths.get("context_feature_status.txt").toAbsolutePath().toString();
+            String contextVarsFilePath = Paths.get("context_vars.txt").toAbsolutePath().toString();
+            String varsOutputFilePath = Paths.get("sdk_active_vars.txt").toAbsolutePath().toString();
+            String contextOutputFilePath = Paths.get("sdk_context_vars.txt").toAbsolutePath().toString();
             
             // Process regular variables with isActive
             processVars(featureService, varsFilePath, varsOutputFilePath);
@@ -98,14 +98,13 @@ public class Main {
     
     private static void writeResults(String outputFilePath, Map<String, Boolean> featureStatus, String reportTitle) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath))) {
-            writer.write(reportTitle + " - Generated at: " + 
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\n");
+            // writer.write(reportTitle + " - Generated at: " + 
+            //         LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\n");
             
             for (Map.Entry<String, Boolean> entry : featureStatus.entrySet()) {
                 writer.write(String.format("%s: %s\n", entry.getKey(), entry.getValue() ? "ENABLED" : "DISABLED"));
             }
             
-            writer.write("Total features checked: " + featureStatus.size());
         }
     }
 }
