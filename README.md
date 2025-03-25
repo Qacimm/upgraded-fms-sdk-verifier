@@ -2,7 +2,7 @@ You're probably here to test whether the upgraded fms sdk is working as expected
 
 The feature toggles used in your service is divided into files `active_vars.txt` containing feature toggles invovked using `isActive` and `active_context_vars.txt` containing feature toggles invovked using `isActiveForContextId` in your codebase.
 
-Main Java service uses the upgraded FMS sdk to invovke all feature toggles in the same manner as they're called in the codebase, context for all isActiveForContextId feature toggles is 100L as all the enabled toggles in `customer_api_gateway` have 100L as context.
+Main Java service uses the upgraded FMS sdk to invovke all feature toggles in the same manner as they're called in the codebase, context for all isActiveForContextId feature toggles is 100L as all the enabled toggles in `trip_rating_service` have 100L as context.
 
 `fms.sh` script fetch all feature toggle values from FMS backend
 
